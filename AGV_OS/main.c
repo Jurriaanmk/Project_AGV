@@ -33,6 +33,7 @@ int read_adc(uint8_t analogreadpin)     //get distance values from IR sensors
 
 int main(void)
 {
+    //
     pinsetup();
     pwm_init();
     adc_init();
