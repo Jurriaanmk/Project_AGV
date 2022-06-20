@@ -58,6 +58,17 @@ void move_stop(void)
     LSPEED = 0;
 }
 
+void buzzer(enable)
+{
+    if(enable)
+    {
+        BUZZER_PORT |= (1<<BUZZER);
+    }
+    else
+    {
+        BUZZER_PORT &=~(1<<BUZZER);
+    }
+}
 
 void ledon(void)
 {
