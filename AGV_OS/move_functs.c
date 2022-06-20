@@ -6,6 +6,9 @@
 #define TURNTIME  600
 #define DRIVESPEED 255
 
+#define UTURNSTRAITTIME 600 //number is not tested
+
+
 void move_forward(int time)
 {
     RSPEED = DRIVESPEED;
@@ -50,6 +53,18 @@ void turn_left(void)
 
 void u_turn(void)
 {
+    if(side == 0)
+    {
+        turn_right();
+        _delay_ms(UTURNSTRAITTIME);
+        turn_right();
+    }
+    else
+    {
+        turn_left();
+        _delay_ms(UTURNSTRAITTIME);
+        turn_left();
+    }
 }
 
 void move_stop(void)
@@ -58,9 +73,9 @@ void move_stop(void)
     LSPEED = 0;
 }
 
-void buzzer(enable)
+void buzzer(int _enable)
 {
-    if(enable)
+    if(_enable)
     {
         BUZZER_PORT |= (1<<BUZZER);
     }
