@@ -3,16 +3,17 @@
 #include <util/delay.h>
 #include "pindefines.h"
 
-#define SPEED 200
-#define TURNADJUST 90
+#define SPEED 120
+#define TURNADJUST 40
 #define TURNTHRESH 20
 
-#define SENSEWALL  0
-#define SENSETREES 1
+#define SENSEWALL_SETTING  0
+#define SENSETREES_SETTING 1
 
 #define DIST_DIF (read_adc(0) - read_adc(1))
 
-int timercounter2 = 0;
+int timercounter2 = 0;  //used to limit distance measurements
+int treeside = 1;       //defines which side sensor looks for trees, 0=right
 
 ISR(TIMER2_OVF_vect)
 {
@@ -31,49 +32,55 @@ int read_adc(uint8_t analogreadpin)     //get distance values from IR sensors
     return ADC;
 }
 
+void detect_tree(void)
+{
+    int sensor = treeside+2;    //select appropriate sensor
+    if(bit_is_clear(INPUT_PIN,TREE_IR_R))
+    {
+        ledon();
+        move_stop();
+        buzzer(1);
+        _delay_ms(500);    //stop at tree
+        buzzer(0);
+
+        while(bit_is_clear(INPUT_PIN,TREE_IR_R))    //continue until tree is passed
+        {
+            RSPEED = SPEED;
+            LSPEED = SPEED;
+        }
+        ledoff();
+    }
+}
+
 int main(void)
 {
-    //
     pinsetup();
     pwm_init();
     adc_init();
     timer_init();
     sei();
 
-//    loop_until_bit_is_clear(START_PIN,START_BUTTON);    //wait for start signal
+    //loop_until_bit_is_clear(START_PIN,START_BUTTON);    //wait for start signal
 
     while(1)
     {
         //wall detection
-        if (read_adc(2)<800 && SENSEWALL)
+        if (read_adc(3)<800 && SENSEWALL_SETTING)
         {
             turn_left();
         }
 
         //tree detection (move to ISR probably)
-        if(bit_is_set(INPUT_PIN,IR_SIDE) && SENSETREES)
+        if(SENSETREES_SETTING)
         {
-            move_stop();
-            ledon();
-            _delay_ms(1000);
-            while(bit_is_set(INPUT_PIN,IR_SIDE))  //move until tree is passed
-            {
-                RSPEED = SPEED;
-                LSPEED = SPEED;
-            }
-            ledoff();
+            detect_tree();  //handles tree detection routine
         }
-
-
-//        while(timercounter2<6); //limit distance measurements
-        timercounter2 = 0;
 
         if(DIST_DIF < TURNTHRESH && DIST_DIF > -TURNTHRESH)
         {
             RSPEED = SPEED;
             LSPEED = SPEED;
         }
-
         else if (read_adc(0) > read_adc(1))     //left turn
         {
             RSPEED = SPEED;
@@ -86,10 +93,6 @@ int main(void)
             RSPEED = SPEED - TURNADJUST;
             TIFR2 |= (1<<TOV2);
         }
-
-
     }
-
     return 0;
 }
-
