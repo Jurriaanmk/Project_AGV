@@ -7,13 +7,19 @@
 #define TURNADJUST 40
 #define TURNTHRESH 20
 
-#define SENSEWALL_SETTING  0
 #define SENSETREES_SETTING 1
+#define CENTERAGV_SETTING 1
 
 #define DIST_DIF (read_adc(0) - read_adc(1))
+#define SEES_WALL (read_adc(3)<800)
+
+#define RIGHT 0     //defines which side sensor looks for trees
+#define LEFT 1
+
 
 int timercounter2 = 0;  //used to limit distance measurements
 int treeside = 1;       //defines which side sensor looks for trees, 0=right
+
 
 ISR(TIMER2_OVF_vect)
 {
@@ -52,6 +58,27 @@ void detect_tree(void)
     }
 }
 
+void center_AGV()
+{
+    if(DIST_DIF < TURNTHRESH && DIST_DIF > -TURNTHRESH)     //strait ahead
+    {
+        RSPEED = SPEED;
+        LSPEED = SPEED;
+    }
+    else if (read_adc(0) > read_adc(1))     //slight left turn
+    {
+        RSPEED = SPEED;
+        LSPEED = SPEED - TURNADJUST;
+        TIFR2 |= (1<<TOV2);
+    }
+    else if (read_adc(0) < read_adc(1))     //slight right turn
+    {
+        LSPEED = SPEED;
+        RSPEED = SPEED - TURNADJUST;
+        TIFR2 |= (1<<TOV2);
+    }
+}
+
 int main(void)
 {
     pinsetup();
@@ -59,7 +86,92 @@ int main(void)
     adc_init();
     timer_init();
     sei();
+    
+    
+    while(1)
+    {
+        loop_until_bit_is_clear(START_PIN,START_BUTTON);    //wait for start signal
 
+
+        //first strait tree detect part
+        treeside = LEFT;
+        while(!SEES_WALL)
+        {
+            if(SENSETREES_SETTING)
+            {
+                detect_tree();      //handles tree detection routine
+            }
+
+            if(CENTERAGV_SETTING)
+            {
+                center_AGV();       //centers the AGV in the middle of the road
+            }
+        }
+
+        u_turn(LEFT);
+
+
+        //second strait tree detect part
+        treeside = RIGHT;
+        while(!SEES_WALL)
+        {
+            if(SENSETREES_SETTING)
+            {
+                detect_tree();      //handles tree detection routine
+            }
+
+            if(CENTERAGV_SETTING)
+            {
+                center_AGV();       //centers the AGV in the middle of the road
+            }
+        }
+
+        u_turn(RIGHT);
+
+
+        //third strait tree detect part
+        treeside = LEFT;
+        while(!SEES_WALL)
+        {
+            if(SENSETREES_SETTING)
+            {
+                detect_tree();      //handles tree detection routine
+            }
+
+            if(CENTERAGV_SETTING)
+            {
+                center_AGV();       //centers the AGV in the middle of the road
+            }
+        }
+
+        u_turn(LEFT);
+
+
+        //return to original side part
+        while(!SEES_WALL)
+        {
+            if(CENTERAGV_SETTING)
+            {
+                center_AGV();       //centers the AGV in the middle of the road
+            }
+        }
+
+        turn_left();
+
+
+        //come back to start part
+        while(!SEES_WALL)
+        {
+            RSPEED = SPEED;
+            LSPEED = SPEED;
+        }
+
+        turn_left();
+    }
+    
+    
+    
+    /*
     //loop_until_bit_is_clear(START_PIN,START_BUTTON);    //wait for start signal
 
     while(1)
@@ -94,5 +206,6 @@ int main(void)
             TIFR2 |= (1<<TOV2);
         }
     }
+    */
     return 0;
 }
